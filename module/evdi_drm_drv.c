@@ -12,7 +12,8 @@
  */
 
 #include <linux/version.h>
-#if KERNEL_VERSION(5, 16, 0) <= LINUX_VERSION_CODE || defined(EL8) || defined(EL9)
+#if KERNEL_VERSION(5, 16, 0) <= LINUX_VERSION_CODE || defined(EL8) || \
+	defined(EL9)
 #include <drm/drm_ioctl.h>
 #include <drm/drm_file.h>
 #include <drm/drm_drv.h>
@@ -43,9 +44,10 @@ struct drm_ioctl_desc evdi_painter_ioctls[] = {
 			  evdi_painter_request_update_ioctl, DRM_UNLOCKED),
 	DRM_IOCTL_DEF_DRV(EVDI_GRABPIX, evdi_painter_grabpix_ioctl,
 			  DRM_UNLOCKED),
-	DRM_IOCTL_DEF_DRV(EVDI_DDCCI_RESPONSE, evdi_painter_ddcci_response_ioctl,
-			  DRM_UNLOCKED),
-	DRM_IOCTL_DEF_DRV(EVDI_ENABLE_CURSOR_EVENTS, evdi_painter_enable_cursor_events_ioctl,
+	DRM_IOCTL_DEF_DRV(EVDI_DDCCI_RESPONSE,
+			  evdi_painter_ddcci_response_ioctl, DRM_UNLOCKED),
+	DRM_IOCTL_DEF_DRV(EVDI_ENABLE_CURSOR_EVENTS,
+			  evdi_painter_enable_cursor_events_ioctl,
 			  DRM_UNLOCKED),
 };
 
@@ -92,14 +94,14 @@ static struct drm_driver driver = {
 #if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE || defined(EL8)
 	.driver_features = DRIVER_MODESET | DRIVER_GEM | DRIVER_ATOMIC,
 #else
-	.driver_features = DRIVER_MODESET | DRIVER_GEM | DRIVER_PRIME
-			 | DRIVER_ATOMIC,
+	.driver_features = DRIVER_MODESET | DRIVER_GEM | DRIVER_PRIME |
+			   DRIVER_ATOMIC,
 #endif
 
 	.open = evdi_driver_open,
 	.postclose = evdi_driver_postclose,
 
-	/* gem hooks */
+/* gem hooks */
 #if KERNEL_VERSION(5, 11, 0) <= LINUX_VERSION_CODE || defined(EL8)
 #elif KERNEL_VERSION(5, 9, 0) <= LINUX_VERSION_CODE
 	.gem_free_object_unlocked = evdi_gem_free_object,
@@ -124,13 +126,8 @@ static struct drm_driver driver = {
 
 	.fops = &evdi_driver_fops,
 
-#if KERNEL_VERSION(6, 6, 0) > LINUX_VERSION_CODE
-	.prime_fd_to_handle = drm_gem_prime_fd_to_handle,
-#endif
 	.gem_prime_import = drm_gem_prime_import,
-#if KERNEL_VERSION(6, 6, 0) > LINUX_VERSION_CODE
-	.prime_handle_to_fd = drm_gem_prime_handle_to_fd,
-#endif
+
 #if KERNEL_VERSION(5, 11, 0) <= LINUX_VERSION_CODE || defined(EL8)
 #else
 	.preclose = evdi_driver_preclose,
@@ -178,7 +175,7 @@ static int evdi_drm_device_init(struct drm_device *dev)
 	ret = evdi_painter_init(evdi);
 	if (ret)
 		goto err_free;
-	ret =  evdi_cursor_init(&evdi->cursor);
+	ret = evdi_cursor_init(&evdi->cursor);
 	if (ret)
 		goto err_free;
 
@@ -215,7 +212,8 @@ err_free:
 	return ret;
 }
 
-int evdi_driver_open(struct drm_device *dev, __always_unused struct drm_file *file)
+int evdi_driver_open(struct drm_device *dev,
+		     __always_unused struct drm_file *file)
 {
 	char buf[100];
 
@@ -293,4 +291,3 @@ int evdi_drm_device_remove(struct drm_device *dev)
 	drm_dev_put(dev);
 	return 0;
 }
-

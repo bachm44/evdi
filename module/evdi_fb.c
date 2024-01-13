@@ -30,7 +30,6 @@
 #endif
 #include "evdi_drm_drv.h"
 
-
 struct evdi_fbdev {
 	struct drm_fb_helper helper;
 	struct evdi_framebuffer efb;
@@ -39,9 +38,9 @@ struct evdi_fbdev {
 	int fb_count;
 };
 
-struct drm_clip_rect evdi_framebuffer_sanitize_rect(
-				const struct evdi_framebuffer *fb,
-				const struct drm_clip_rect *dirty_rect)
+struct drm_clip_rect
+evdi_framebuffer_sanitize_rect(const struct evdi_framebuffer *fb,
+			       const struct drm_clip_rect *dirty_rect)
 {
 	struct drm_clip_rect rect = *dirty_rect;
 
@@ -60,7 +59,6 @@ struct drm_clip_rect evdi_framebuffer_sanitize_rect(
 		rect.y2 = rect.y1;
 		rect.y1 = tmp;
 	}
-
 
 	if (rect.x1 > fb->base.width) {
 		EVDI_DEBUG("Wrong clip rect: x1 > fb.width\n");
@@ -86,8 +84,8 @@ struct drm_clip_rect evdi_framebuffer_sanitize_rect(
 }
 
 #ifdef CONFIG_FB
-static int evdi_handle_damage(struct evdi_framebuffer *fb,
-		       int x, int y, int width, int height)
+static int evdi_handle_damage(struct evdi_framebuffer *fb, int x, int y,
+			      int width, int height)
 {
 	const struct drm_clip_rect dirty_rect = { x, y, x + width, y + height };
 	const struct drm_clip_rect rect =
@@ -115,8 +113,7 @@ static int evdi_fb_mmap(struct fb_info *info, struct vm_area_struct *vma)
 	if (vma->vm_pgoff > (~0UL >> PAGE_SHIFT))
 		return -EINVAL;
 
-	if (offset > info->fix.smem_len ||
-	    size > info->fix.smem_len - offset)
+	if (offset > info->fix.smem_len || size > info->fix.smem_len - offset)
 		return -EINVAL;
 
 	pos = (unsigned long)info->fix.smem_start + offset;
@@ -182,8 +179,8 @@ static int evdi_fb_open(struct fb_info *info, int user)
 	struct evdi_fbdev *efbdev = info->par;
 
 	efbdev->fb_count++;
-	pr_notice("open /dev/fb%d user=%d fb_info=%p count=%d\n",
-		  info->node, user, info, efbdev->fb_count);
+	pr_notice("open /dev/fb%d user=%d fb_info=%p count=%d\n", info->node,
+		  user, info, efbdev->fb_count);
 
 	return 0;
 }
@@ -197,8 +194,8 @@ static int evdi_fb_release(struct fb_info *info, int user)
 
 	efbdev->fb_count--;
 
-	pr_warn("released /dev/fb%d user=%d count=%d\n",
-		info->node, user, efbdev->fb_count);
+	pr_warn("released /dev/fb%d user=%d count=%d\n", info->node, user,
+		efbdev->fb_count);
 
 	return 0;
 }
@@ -227,12 +224,10 @@ static const struct fb_ops evdifb_ops = {
  * https://lore.kernel.org/dri-devel/20180905233901.2321-5-drawat@vmware.com/
  */
 static int evdi_user_framebuffer_dirty(
-		struct drm_framebuffer *fb,
-		__maybe_unused struct drm_file *file_priv,
-		__always_unused unsigned int flags,
-		__always_unused unsigned int color,
-		__always_unused struct drm_clip_rect *clips,
-		__always_unused unsigned int num_clips)
+	struct drm_framebuffer *fb, __maybe_unused struct drm_file *file_priv,
+	__always_unused unsigned int flags, __always_unused unsigned int color,
+	__always_unused struct drm_clip_rect *clips,
+	__always_unused unsigned int num_clips)
 {
 	struct evdi_framebuffer *efb = to_evdi_fb(fb);
 	struct drm_device *dev = efb->base.dev;
@@ -247,11 +242,12 @@ static int evdi_user_framebuffer_dirty(
 	EVDI_CHECKPT();
 
 	drm_modeset_acquire_init(&ctx,
-		/*
+				 /*
 		 * When called from ioctl, we are interruptable,
 		 * but not when called internally (ie. defio worker)
 		 */
-		file_priv ? DRM_MODESET_ACQUIRE_INTERRUPTIBLE :	0);
+				 file_priv ? DRM_MODESET_ACQUIRE_INTERRUPTIBLE :
+					     0);
 
 	state = drm_atomic_state_alloc(fb->dev);
 	if (!state) {
@@ -337,11 +333,10 @@ static const struct drm_framebuffer_funcs evdifb_funcs = {
 #endif
 };
 
-static int
-evdi_framebuffer_init(struct drm_device *dev,
-		      struct evdi_framebuffer *efb,
-		      const struct drm_mode_fb_cmd2 *mode_cmd,
-		      struct evdi_gem_object *obj)
+static int evdi_framebuffer_init(struct drm_device *dev,
+				 struct evdi_framebuffer *efb,
+				 const struct drm_mode_fb_cmd2 *mode_cmd,
+				 struct evdi_gem_object *obj)
 {
 	efb->obj = obj;
 	drm_helper_mode_fill_fb_struct(dev, &efb->base, mode_cmd);
@@ -404,26 +399,18 @@ static int evdifb_create(struct drm_fb_helper *helper,
 	fb = &efbdev->efb.base;
 
 	efbdev->helper.fb = fb;
-#if KERNEL_VERSION(6, 2, 0) <= LINUX_VERSION_CODE || defined(EL8) || defined(EL9)
+#if KERNEL_VERSION(6, 2, 0) <= LINUX_VERSION_CODE || defined(EL8) || \
+	defined(EL9)
 	efbdev->helper.info = info;
 #else
 	efbdev->helper.fbdev = info;
 #endif
-
 
 	strscpy(info->fix.id, "evdidrmfb", sizeof(info->fix.id));
 
 	info->screen_base = efbdev->efb.obj->vmapping;
 	info->fix.smem_len = size;
 	info->fix.smem_start = (unsigned long)efbdev->efb.obj->vmapping;
-
-#if KERNEL_VERSION(4, 20, 0) <= LINUX_VERSION_CODE || defined(EL8)
-#ifdef FBINFO_DEFAULT
-	info->flags = FBINFO_DEFAULT;
-#endif
-#else
-	info->flags = FBINFO_DEFAULT | FBINFO_CAN_FORCE_OUTPUT;
-#endif
 
 	efbdev->fb_ops = &evdifb_ops;
 	info->fbops = efbdev->fb_ops;
@@ -442,17 +429,17 @@ static int evdifb_create(struct drm_fb_helper *helper,
 		goto out_gfree;
 	}
 
-	DRM_DEBUG_KMS("allocated %dx%d vmal %p\n",
-		      fb->width, fb->height, efbdev->efb.obj->vmapping);
+	DRM_DEBUG_KMS("allocated %dx%d vmal %p\n", fb->width, fb->height,
+		      efbdev->efb.obj->vmapping);
 
 	return ret;
- out_gfree:
+out_gfree:
 #if KERNEL_VERSION(5, 9, 0) <= LINUX_VERSION_CODE || defined(EL8)
 	drm_gem_object_put(&efbdev->efb.obj->base);
 #else
 	drm_gem_object_put_unlocked(&efbdev->efb.obj->base);
 #endif
- out:
+out:
 	return ret;
 }
 
@@ -465,7 +452,8 @@ static void evdi_fbdev_destroy(__always_unused struct drm_device *dev,
 {
 	struct fb_info *info;
 
-#if KERNEL_VERSION(6, 2, 0) <= LINUX_VERSION_CODE || defined(EL8) || defined(EL9)
+#if KERNEL_VERSION(6, 2, 0) <= LINUX_VERSION_CODE || defined(EL8) || \
+	defined(EL9)
 	if (efbdev->helper.info) {
 		info = efbdev->helper.info;
 #else
@@ -502,7 +490,8 @@ int evdi_fbdev_init(struct drm_device *dev)
 		return -ENOMEM;
 
 	evdi->fbdev = efbdev;
-#if KERNEL_VERSION(6, 3, 0) <= LINUX_VERSION_CODE || defined(EL8) || defined(EL9)
+#if KERNEL_VERSION(6, 3, 0) <= LINUX_VERSION_CODE || defined(EL8) || \
+	defined(EL9)
 	drm_fb_helper_prepare(dev, &efbdev->helper, 32, &evdi_fb_helper_funcs);
 #else
 	drm_fb_helper_prepare(dev, &efbdev->helper, &evdi_fb_helper_funcs);
@@ -523,7 +512,8 @@ int evdi_fbdev_init(struct drm_device *dev)
 	drm_fb_helper_single_add_all_connectors(&efbdev->helper);
 #endif
 
-#if KERNEL_VERSION(6, 3, 0) <= LINUX_VERSION_CODE || defined(EL8) || defined(EL9)
+#if KERNEL_VERSION(6, 3, 0) <= LINUX_VERSION_CODE || defined(EL8) || \
+	defined(EL9)
 	ret = drm_fb_helper_initial_config(&efbdev->helper);
 #else
 	ret = drm_fb_helper_initial_config(&efbdev->helper, 32);
@@ -557,7 +547,8 @@ void evdi_fbdev_unplug(struct drm_device *dev)
 		return;
 
 	efbdev = evdi->fbdev;
-#if KERNEL_VERSION(6, 2, 0) <= LINUX_VERSION_CODE || defined(EL8) || defined(EL9)
+#if KERNEL_VERSION(6, 2, 0) <= LINUX_VERSION_CODE || defined(EL8) || \
+	defined(EL9)
 	if (efbdev->helper.info) {
 		struct fb_info *info;
 
@@ -586,10 +577,9 @@ int evdi_fb_get_bpp(uint32_t format)
 	return info->cpp[0] * 8;
 }
 
-struct drm_framebuffer *evdi_fb_user_fb_create(
-					struct drm_device *dev,
-					struct drm_file *file,
-					const struct drm_mode_fb_cmd2 *mode_cmd)
+struct drm_framebuffer *
+evdi_fb_user_fb_create(struct drm_device *dev, struct drm_file *file,
+		       const struct drm_mode_fb_cmd2 *mode_cmd)
 {
 	struct drm_gem_object *obj;
 	struct evdi_framebuffer *efb;
@@ -626,10 +616,10 @@ struct drm_framebuffer *evdi_fb_user_fb_create(
 		goto err_inval;
 	return &efb->base;
 
- err_no_mem:
+err_no_mem:
 	drm_gem_object_put(obj);
 	return ERR_PTR(-ENOMEM);
- err_inval:
+err_inval:
 	kfree(efb);
 	drm_gem_object_put(obj);
 	return ERR_PTR(-EINVAL);
